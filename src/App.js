@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Row, Col } from 'antd';
-import { Routes, Route } from "react-router-dom";
+import { Layout, Row, Col, Menu } from 'antd';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Home from "./pages/Home";
 import Task from "./pages/Task";
-import { db } from './firebase';
+import Register from './components/Register';
+import Login from './components/Login';
+import Logout from './components/Logout';
+import { db, auth } from './firebase';
 import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
 const { Header, Content, Footer } = Layout;
 
 function App() {
   const [tasks, setTasks] = useState([]);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -19,6 +24,14 @@ function App() {
     };
 
     fetchTasks();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const addTask = async (title, text, isComplete) => {
@@ -59,17 +72,39 @@ function App() {
   return (
     <Layout>
       <Header style={{ background: '#fff', padding: 0 }}>
-        <div className="logo" style={{ color: '#000', fontSize: '20px', fontWeight: 'bold', paddingLeft: '20px' }}>
+      <div className="logo" style={{ color: '#000', fontSize: '20px', fontWeight: 'bold', paddingLeft: '20px' }}>
           To-Do App
         </div>
+        <Menu mode="horizontal">
+          <Menu.Item key="home">
+            <a href="/">Home</a>
+          </Menu.Item>
+          {!user && (
+            <>
+              <Menu.Item key="register">
+                <a href="/register">Register</a>
+              </Menu.Item>
+              <Menu.Item key="login">
+                <a href="/login">Login</a>
+              </Menu.Item>
+            </>
+          )}
+          {user && (
+            <Menu.Item key="logout">
+              <Logout />
+            </Menu.Item>
+          )}
+        </Menu>
       </Header>
       <Content style={{ padding: '0 50px' }}>
         <Row justify="center" style={{ minHeight: '80vh' }}>
           <Col span={12}>
             <div className="site-layout-content">
               <Routes>
-                <Route path="/" element={<Home tasks={tasks} addTask={addTask} />} />
-                <Route path="/task/:id" element={<Task tasks={tasks} addTask={addTask} updateTask={updateTask} toggleTask={toggleTask} deleteTask={deleteTask} />} />
+                <Route path="/" element={user ? <Home tasks={tasks} addTask={addTask} /> : <Navigate to="/login" />} />
+                <Route path="/task/:id" element={user ? <Task tasks={tasks} addTask={addTask} updateTask={updateTask} toggleTask={toggleTask} deleteTask={deleteTask} /> : <Navigate to="/login" />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/login" element={<Login />} />
               </Routes>
             </div>
           </Col>
